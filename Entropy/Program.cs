@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Security.Cryptography;
 using System.Net;
+using System.Linq;
 
 namespace Entropy
 {
@@ -150,9 +151,11 @@ namespace Entropy
                 try
                 {
                     KeyValue kvGames = steamPlayerServices.GetOwnedGames(steamid: steamUser.SteamID.ConvertToUInt64(), include_appinfo: 1);
+                    var apps = SteamDrives.getAllInstalledGames();
                     foreach (KeyValue game in kvGames["games"].Children)
                     {
-                        Console.WriteLine("{0}", game["name"].AsString());
+                        if (apps.Contains(game["appid"].AsInteger()))
+                            Console.WriteLine("{0}", game["name"].AsString());
                     }
                 }
                 catch (WebException ex)
