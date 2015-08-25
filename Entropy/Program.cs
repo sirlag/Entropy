@@ -145,24 +145,7 @@ namespace Entropy
 
             Console.WriteLine("Successfully logged on!");
 
-            using (dynamic steamPlayerServices = WebAPI.GetInterface("IPlayerService", steamApiKey))
-            {
-
-                try
-                {
-                    KeyValue kvGames = steamPlayerServices.GetOwnedGames(steamid: steamUser.SteamID.ConvertToUInt64(), include_appinfo: 1);
-                    var apps = SteamDrives.getAllInstalledGames();
-                    foreach (KeyValue game in kvGames["games"].Children)
-                    {
-                        if (apps.Contains(game["appid"].AsInteger()))
-                            Console.WriteLine("{0}", game["name"].AsString());
-                    }
-                }
-                catch (WebException ex)
-                {
-                    Console.WriteLine("Unable to make API request:{0}", ex.Message);
-                }
-            }
+            PickRandomInstalledGame();
 
             steamUser.LogOff();
             return;
@@ -258,6 +241,44 @@ namespace Entropy
         {
             byte[] info = new UTF8Encoding(true).GetBytes(value);
             fs.Write(info, 0, info.Length);
+        }
+
+        private static void PickRandomInstalledGame()
+        {
+            using (dynamic steamPlayerServices = WebAPI.GetInterface("IPlayerService", steamApiKey))
+            {
+
+                try
+                {
+                    KeyValue kvGames = steamPlayerServices.GetOwnedGames(steamid: steamUser.SteamID.ConvertToUInt64(), include_appinfo: 1);
+                    var apps = SteamDrives.getAllInstalledGames();
+                    var matchedGames = new TupleList<String, int>();
+                    foreach (KeyValue game in kvGames["games"].Children)
+                    {
+                        if (apps.Contains(game["appid"].AsInteger()))
+                            matchedGames.Add(game["name"].AsString(), game["appid"].AsInteger());
+                    }
+                    Random r = new Random();
+                    Tuple<String, int> randomGame = matchedGames[r.Next(matchedGames.Count)];
+                    Console.Write("Would you like to play {0}? [Y/n] : ", randomGame.Item1);
+                    switch (Console.ReadLine())
+                    {
+                        case "Y":
+                        case "y":
+                            Console.WriteLine("Launching {0} - AppID {1}", randomGame.Item1, randomGame.Item2);
+                            var uri = String.Format("steam://run/{0}", randomGame.Item2.ToString());
+                            System.Diagnostics.Process.Start(uri);
+                            break;
+                        default :
+                            Console.WriteLine("Not launching game {0}", randomGame.Item1);
+                            break;
+                    }             
+                }
+                catch (WebException ex)
+                {
+                    Console.WriteLine("Unable to make API request:{0}", ex.Message);
+                }
+            }
         }
     }
 }
